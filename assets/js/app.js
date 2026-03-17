@@ -119,6 +119,7 @@ document.addEventListener("alpine:init", () => {
       youtube_url: "",
       social_link: "",
       featured_image: null,
+      featured_image_preview: null,
       categories: [],
     },
     availableCategories: mediumCloneData.categories || [],
@@ -156,9 +157,95 @@ document.addEventListener("alpine:init", () => {
       window.scrollTo({ top: 0, behavior: "smooth" });
     },
 
+    insertEmbedPrompt(type) {
+      // 1. Des messages de prompt plus clairs en fonction du type
+      const promptMessage =
+        type === "youtube"
+          ? "Collez l'URL de la vidéo YouTube (ou Short) ici :"
+          : "Collez l'URL du post (Facebook, LinkedIn, X, Instagram...) ici :";
+
+      const url = prompt(promptMessage);
+
+      if (!url) return;
+      if (!url.startsWith("http")) {
+        alert("Veuillez entrer une URL valide commençant par http ou https.");
+        return;
+      }
+
+      let embedHtml = "";
+
+      if (type === "youtube") {
+        let cleanUrl = url.replace("/shorts/", "/watch?v=");
+        const regExp =
+          /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = cleanUrl.match(regExp);
+        const videoId = match && match[2].length === 11 ? match[2] : null;
+
+        if (videoId) {
+          embedHtml = `
+            <div class="my-6 aspect-video bg-gray-900 rounded-xl overflow-hidden shadow-lg border border-gray-100 dark:border-gray-800">
+                <iframe src="https://www.youtube.com/embed/${videoId}" 
+                    class="w-full h-full" 
+                    frameborder="0" 
+                    loading="lazy"
+                    title="Lecteur vidéo YouTube"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
+                </iframe>
+            </div><p><br></p>`;
+        } else {
+          alert("L'URL YouTube ne semble pas valide. Vérifiez le lien.");
+          return;
+        }
+      } else {
+        let platformName = "Médias sociaux";
+        let platformColor = "text-primary";
+        const lowerUrl = url.toLowerCase();
+
+        if (lowerUrl.includes("facebook.com")) {
+          platformName = "Post Facebook";
+          platformColor = "text-blue-600";
+        } else if (lowerUrl.includes("linkedin.com")) {
+          platformName = "Post LinkedIn";
+          platformColor = "text-blue-700";
+        } else if (lowerUrl.includes("instagram.com")) {
+          platformName = "Post Instagram";
+          platformColor = "text-pink-600";
+        } else if (
+          lowerUrl.includes("twitter.com") ||
+          lowerUrl.includes("x.com")
+        ) {
+          platformName = "Post X (Twitter)";
+          platformColor = "text-gray-900 dark:text-gray-100";
+        }
+
+        embedHtml = `
+        <div class="my-6 p-6 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl text-center bg-gray-50/50 dark:bg-dark-surface/50 hover:bg-gray-100 dark:hover:bg-dark-surface transition-colors group">
+            <div class="${platformColor} mb-3 flex justify-center transform group-hover:scale-110 transition-transform">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+            </div>
+            <p class="text-sm font-bold text-gray-800 dark:text-gray-200 mb-2">Contenu ${platformName}</p>
+            <a href="${url}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-500 hover:text-blue-600 underline break-all line-clamp-2">${url}</a>
+        </div><p><br></p>`;
+      }
+
+      if (embedHtml) {
+        this.quill.focus();
+        const range = this.quill.getSelection(true);
+        const index = range ? range.index : this.quill.getLength();
+
+        this.quill.clipboard.dangerouslyPasteHTML(index, embedHtml);
+
+        setTimeout(() => {
+          this.quill.setSelection(index + 2, 0);
+        }, 150);
+      }
+    },
+
     toggleEdit() {
       this.isEditing = !this.isEditing;
       this.message = "";
+      this.isError = false;
       if (!this.isEditing) {
         this.form = {
           id: null,
@@ -167,6 +254,7 @@ document.addEventListener("alpine:init", () => {
           youtube_url: "",
           social_link: "",
           featured_image: null,
+          featured_image_preview: null,
           categories: [],
         };
         this.quill.setContents([]);
@@ -177,6 +265,12 @@ document.addEventListener("alpine:init", () => {
       const file = event.target.files[0];
       if (file) {
         this.form.featured_image = file;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          this.form.featured_image_preview = e.target.result;
+        };
+        reader.readAsDataURL(file);
       }
     },
 
@@ -270,6 +364,7 @@ document.addEventListener("alpine:init", () => {
       bio: "",
       twitter: "",
       linkedin: "",
+      facebook: "",
       website: "",
       avatar: "",
     },
@@ -310,7 +405,9 @@ document.addEventListener("alpine:init", () => {
           if (!img) return;
 
           // Scroll the crop panel into view smoothly
-          img.closest('[x-show]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          img
+            .closest("[x-show]")
+            ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
           img.src = e.target.result;
           img.onload = () => {
@@ -375,6 +472,7 @@ document.addEventListener("alpine:init", () => {
       formData.append("bio", this.form.bio);
       formData.append("twitter", this.form.twitter);
       formData.append("linkedin", this.form.linkedin);
+      formData.append("facebook", this.form.facebook);
       formData.append("website", this.form.website);
 
       if (this.avatarFile) {

@@ -12,6 +12,11 @@ if (!is_user_logged_in()) {
 $user = wp_get_current_user();
 $total_points = get_user_meta($user->ID, 'mc_total_points', true) ?: 0;
 $chart_data = mc_get_author_analytics_data($user->ID);
+$status = get_user_meta($user->ID, 'mc_account_status', true);
+if ($status === 'pending') {
+    wp_redirect(add_query_arg('activation_required', '1', home_url('/login/')));
+    exit;
+}
 ?>
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" x-data="{ tab: 'stats' }">
@@ -119,7 +124,7 @@ $chart_data = mc_get_author_analytics_data($user->ID);
                                     <span
                                         class="text-xs font-bold text-gray-500 uppercase tracking-tighter"><?php echo str_replace(mb_substr($label, 0, 2), '', $label); ?></span>
                                 </div>
-                            <?php
+                                <?php
                             endforeach;
                         else:
                             ?>
@@ -146,77 +151,168 @@ $chart_data = mc_get_author_analytics_data($user->ID);
                 </div>
 
                 <!-- Editor Space -->
-                <div x-show="isEditing" class="card p-8 mb-8" style="display: none;">
-                    <form @submit.prevent="savePost()">
-                        <div x-show="message" class="mb-4 p-3 rounded"
-                            :class="isError ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'"
-                            x-text="message" style="display: none;"></div>
-                        <input type="text" x-model="form.title" placeholder="Title"
-                            class="w-full text-4xl font-serif font-bold border-none focus:ring-0 bg-transparent mb-4 outline-none placeholder-gray-300 dark:placeholder-gray-600 dark:text-light-bg"
+                <div x-show="isEditing"
+                    class="card p-0 overflow-hidden mb-8 border-none shadow-2xl bg-white dark:bg-dark-surface"
+                    style="display: none;">
+
+                    <div
+                        class="flex items-center justify-between px-8 py-4 border-b border-light-border dark:border-dark-border bg-gray-50/50 dark:bg-dark-bg/20">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                            <span class="text-xs font-bold uppercase tracking-widest text-gray-400">Mode Édition</span>
+                        </div>
+                        <button @click="toggleEdit" class="text-gray-400 hover:text-red-500 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <form @submit.prevent="savePost()" class="p-8">
+                        <div x-show="message" x-transition
+                            class="mb-6 p-4 rounded-xl flex items-center gap-3 text-sm font-medium"
+                            :class="isError ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'"
+                            x-text="message"></div>
+
+                        <input type="text" x-model="form.title" placeholder="Titre de votre histoire..."
+                            class="w-full text-4xl md:text-5xl font-serif font-bold border-none focus:ring-0 bg-transparent mb-6 outline-none placeholder-gray-200 dark:placeholder-gray-700 dark:text-light-bg"
                             required>
 
-                        <!-- Rich Media Inputs -->
                         <div
-                            class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 p-4 bg-gray-50/50 dark:bg-dark-bg/50 rounded-xl border border-light-border dark:border-dark-border">
-                            <div class="col-span-full">
-                                <label
-                                    class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Featured
-                                    Image</label>
-                                <input type="file" @change="handleFileUpload($event)" accept="image/*"
-                                    class="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20">
-                            </div>
-                            <div>
-                                <label
-                                    class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">YouTube
-                                    URL</label>
-                                <input type="url" x-model="form.youtube_url"
-                                    placeholder="https://youtube.com/watch?v=..."
-                                    class="w-full px-4 py-2 text-sm bg-white dark:bg-dark-surface border border-gray-200 dark:border-gray-700 rounded-lg outline-none focus:border-primary">
-                            </div>
-                            <div>
-                                <label
-                                    class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Social
-                                    Link</label>
-                                <input type="url" x-model="form.social_link" placeholder="https://twitter.com/..."
-                                    class="w-full px-4 py-2 text-sm bg-white dark:bg-dark-surface border border-gray-200 dark:border-gray-700 rounded-lg outline-none focus:border-primary">
-                            </div>
+                            class="sticky top-4 z-20 flex items-center gap-1 mb-6 p-1.5 bg-white/80 dark:bg-dark-surface/90 backdrop-blur-md rounded-2xl border border-light-border dark:border-dark-border shadow-sm w-max">
+                            <span class="text-[10px] font-black text-gray-400 uppercase px-3">Insérer</span>
+                            <div class="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
 
-                            <!-- Category Selection -->
-                            <div class="col-span-full">
-                                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-                                    Categories (Max 2)
-                                </label>
-                                <div class="flex flex-wrap gap-2">
-                                    <template x-for="category in availableCategories" :key="category.id">
-                                        <button type="button" @click="toggleCategory(category.id)"
-                                            :class="form.categories.includes(category.id) 
-                                                ? 'bg-primary text-white border-primary' 
-                                                : 'bg-white dark:bg-dark-surface text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-primary'"
-                                            class="px-3 py-1.5 text-xs font-medium rounded-full border transition-all duration-200 flex items-center gap-1.5">
-                                            <span x-text="category.name"></span>
-                                            <svg x-show="form.categories.includes(category.id)" class="w-3 h-3"
+                            <button type="button" @click="insertEmbedPrompt('youtube')"
+                                class="p-2.5 hover:bg-primary/10 hover:text-primary rounded-xl text-gray-500 dark:text-gray-400 transition-all group"
+                                title="Ajouter une vidéo YouTube">
+                                <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                            </button>
+
+                            <button type="button" @click="insertEmbedPrompt('social')"
+                                class="p-2.5 hover:bg-primary/10 hover:text-primary rounded-xl text-gray-500 dark:text-gray-400 transition-all group"
+                                title="Ajouter un post social">
+                                <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="none"
+                                    stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div class="mb-10 group">
+                            <div x-ref="editor"
+                                class="w-full min-h-[400px] text-xl font-serif dark:text-light-bg leading-relaxed prose prose-lg dark:prose-invert max-w-none focus:outline-none">
+                            </div>
+                        </div>
+
+                        <div class="mt-12 pt-8 border-t border-light-border dark:border-dark-border">
+                            <h4
+                                class="text-sm font-bold text-dark-bg dark:text-light-bg uppercase tracking-widest mb-6">
+                                Paramètres de publication</h4>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div class="col-span-full lg:col-span-1">
+                                    <label
+                                        class="block text-xs font-bold text-gray-400 uppercase mb-3 text-center md:text-left">Image
+                                        de couverture</label>
+
+                                    <div class="relative group cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed group-hover:border-primary transition-colors"
+                                        :class="form.featured_image_preview ? 'border-primary' : 'border-gray-200 dark:border-gray-700'">
+
+                                        <input type="file" @change="handleFileUpload($event)" accept="image/*"
+                                            class="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer">
+
+                                        <div x-show="!form.featured_image_preview"
+                                            class="p-8 text-center bg-gray-50/50 dark:bg-dark-bg/20">
+                                            <svg class="w-10 h-10 mx-auto text-gray-300 group-hover:text-primary mb-3 transition-colors"
                                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                    d="M5 13l4 4L19 7"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                             </svg>
-                                        </button>
-                                    </template>
+                                            <p class="text-sm font-semibold text-gray-600 dark:text-gray-300">Ajouter
+                                                une image de couverture</p>
+                                            <p class="text-xs text-gray-400 mt-1">Haute résolution recommandée (PNG,
+                                                JPG, WebP)</p>
+                                        </div>
+
+                                        <div x-show="form.featured_image_preview"
+                                            class="relative aspect-[16/9] bg-gray-900" style="display:none;">
+                                            <img :src="form.featured_image_preview"
+                                                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                alt="Prévisualisation">
+
+                                            <div
+                                                class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                                <div
+                                                    class="flex items-center gap-2 text-white bg-black/50 px-4 py-2 rounded-full backdrop-blur-sm text-xs font-bold">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor"
+                                                        viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                                            stroke-width="2"
+                                                            d="M15.232 15.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                                    </svg>
+                                                    Changer l'image
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-span-full lg:col-span-1">
+                                    <label class="block text-xs font-bold text-gray-400 uppercase mb-3">Catégories (2
+                                        max)</label>
+                                    <div class="flex flex-wrap gap-2">
+                                        <template x-for="category in availableCategories" :key="category.id">
+                                            <button type="button" @click="toggleCategory(category.id)"
+                                                :class="form.categories.includes(category.id) 
+                                    ? 'bg-primary text-white border-primary shadow-md shadow-primary/20' 
+                                    : 'bg-white dark:bg-dark-surface text-gray-500 border-gray-200 dark:border-gray-700 hover:border-primary'"
+                                                class="px-4 py-2 text-xs font-semibold rounded-full border transition-all flex items-center gap-2">
+                                                <span x-text="category.name"></span>
+                                                <svg x-show="form.categories.includes(category.id)" class="w-3 h-3"
+                                                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                                        stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                </svg>
+                                            </button>
+                                        </template>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="mb-4">
-                            <div x-ref="editor"
-                                class="w-full min-h-[300px] text-lg font-serif dark:text-light-bg border-none outline-none">
-                            </div>
-                        </div>
-                        <input type="hidden" name="content" x-model="form.content">
                         <div
-                            class="flex justify-end gap-4 mt-6 border-t pt-4 border-light-border dark:border-dark-border">
-                            <button type="button" @click="savePost('draft')" class="btn-outline"
-                                :disabled="loading">Save as Draft</button>
-                            <button type="button" @click="savePost('publish')" class="btn"
-                                :disabled="loading">Publish</button>
+                            class="flex items-center justify-between mt-12 pt-6 border-t border-light-border dark:border-dark-border">
+                            <button type="button" @click="toggleEdit"
+                                class="text-sm font-medium text-gray-400 hover:text-gray-600 transition-colors">
+                                Annuler
+                            </button>
+                            <div class="flex gap-4">
+                                <button type="button" @click="savePost('draft')"
+                                    class="px-6 py-5 rounded-full text-sm font-bold text-gray-500 hover:text-dark-bg transition-all"
+                                    :disabled="loading">Brouillon</button>
+                                <button type="button" @click="savePost('publish')"
+                                    class="px-8 py-5 bg-primary hover:bg-emerald-600 text-white rounded-full text-sm font-bold shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
+                                    :disabled="loading">
+                                    <span x-show="!loading">Publier l'article</span>
+                                    <span x-show="loading" class="flex items-center gap-2">
+                                        <svg class="w-4 h-4 animate-spin" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                                stroke-width="4" fill="none"></circle>
+                                            <path class="opacity-75" fill="currentColor"
+                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                            </path>
+                                        </svg>
+                                        Envoi...
+                                    </span>
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -384,5 +480,111 @@ $chart_data = mc_get_author_analytics_data($user->ID);
         </main>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const canvas = document.getElementById('engagementChart');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        if (typeof Chart === 'undefined') return;
+
+        const chartData = <?php echo json_encode($chart_data); ?>;
+        const isDark = document.documentElement.classList.contains('dark');
+
+        const primaryColor = '#10b981';
+        const secondaryColor = isDark ? '#6366f1' : '#4f46e5';
+        const textColor = isDark ? '#9ca3af' : '#6b7280';
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, isDark ? 'rgba(16, 185, 129, 0.2)' : 'rgba(16, 185, 129, 0.1)');
+        gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.labels,
+                datasets: [
+                    {
+                        label: 'Vues',
+                        data: chartData.views,
+                        borderColor: isDark ? '#4b5563' : '#d1d5db',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        tension: 0.4,
+                        fill: false
+                    },
+                    {
+                        label: 'Engagement',
+                        data: chartData.engagement,
+                        borderColor: primaryColor,
+                        backgroundColor: gradient,
+                        borderWidth: 3,
+                        pointBackgroundColor: primaryColor,
+                        pointBorderColor: isDark ? '#1f2937' : '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        align: 'end',
+                        labels: {
+                            color: isDark ? '#e5e7eb' : '#374151',
+                            usePointStyle: true,
+                            boxWidth: 6,
+                            font: { size: 12, weight: '600' }
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: isDark ? '#1f2937' : '#ffffff',
+                        titleColor: isDark ? '#ffffff' : '#1f2937',
+                        bodyColor: isDark ? '#9ca3af' : '#4b5563',
+                        borderColor: isDark ? '#374151' : '#e5e7eb',
+                        borderWidth: 1,
+                        padding: 12,
+                        displayColors: true,
+                        callbacks: {
+                            label: function (context) {
+                                return ` ${context.dataset.label}: ${context.raw}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: textColor, font: { size: 11 } }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: gridColor, drawBorder: false },
+                        ticks: {
+                            color: textColor,
+                            precision: 0,
+                            padding: 10
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                }
+            }
+        });
+    });
+</script>
 
 <?php get_footer(); ?>

@@ -16,8 +16,8 @@ function mc_register_post_routes()
         'methods' => 'POST',
         'callback' => 'mc_create_or_update_post',
         'permission_callback' => function () {
-        return is_user_logged_in();
-    }
+            return is_user_logged_in();
+        }
     ));
 }
 
@@ -32,7 +32,7 @@ function mc_create_or_update_post($request)
     $user_id = get_current_user_id();
     $post_id = intval($request->get_param('post_id'));
     $title = sanitize_text_field($request->get_param('title'));
-    $content = wp_kses_post($request->get_param('content'));
+    $raw_content = $request->get_param('content');
     $status = sanitize_text_field($request->get_param('status'));
 
     // Custom Fields
@@ -46,6 +46,20 @@ function mc_create_or_update_post($request)
     if (!in_array($status, ['draft', 'publish'])) {
         $status = 'draft';
     }
+
+    $allowed_html = wp_kses_allowed_html('post');
+    $allowed_html['iframe'] = array(
+        'src' => true,
+        'width' => true,
+        'height' => true,
+        'frameborder' => true,
+        'allowfullscreen' => true,
+        'title' => true,
+        'class' => true,
+    );
+    $allowed_html['div']['class'] = true;
+
+    $content = wp_kses($raw_content, $allowed_html);
 
     $post_data = array(
         'post_title' => $title,
@@ -62,8 +76,7 @@ function mc_create_or_update_post($request)
         }
         $post_data['ID'] = $post_id;
         $result = wp_update_post($post_data, true);
-    }
-    else {
+    } else {
         $result = wp_insert_post($post_data, true);
 
         if (!is_wp_error($result) && $status === 'publish' && function_exists('mc_award_points')) {
@@ -85,15 +98,13 @@ function mc_create_or_update_post($request)
     // Handle Metadata
     if (!empty($youtube_url)) {
         update_post_meta($result, 'mc_youtube_url', $youtube_url);
-    }
-    else {
+    } else {
         delete_post_meta($result, 'mc_youtube_url');
     }
 
     if (!empty($social_link)) {
         update_post_meta($result, 'mc_social_link', $social_link);
-    }
-    else {
+    } else {
         delete_post_meta($result, 'mc_social_link');
     }
 

@@ -16,16 +16,16 @@ function mc_register_profile_routes()
         'methods' => 'POST',
         'callback' => 'mc_update_profile_handler',
         'permission_callback' => function () {
-        return is_user_logged_in();
-    },
+            return is_user_logged_in();
+        },
     ]);
 
     register_rest_route('mediumclone/v1', '/profile', [
         'methods' => 'GET',
         'callback' => 'mc_get_profile_handler',
         'permission_callback' => function () {
-        return is_user_logged_in();
-    },
+            return is_user_logged_in();
+        },
     ]);
 }
 
@@ -82,6 +82,7 @@ function mc_update_profile_handler($request)
     update_user_meta($user_id, 'mc_twitter', esc_url_raw($request->get_param('twitter')));
     update_user_meta($user_id, 'mc_linkedin', esc_url_raw($request->get_param('linkedin')));
     update_user_meta($user_id, 'mc_website', esc_url_raw($request->get_param('website')));
+    update_user_meta($user_id, 'mc_facebook', esc_url_raw($request->get_param('facebook')));
 
     return rest_ensure_response([
         'status' => 'success',
@@ -104,6 +105,7 @@ function mc_get_profile_handler($request)
         'twitter' => get_user_meta($user_id, 'mc_twitter', true),
         'linkedin' => get_user_meta($user_id, 'mc_linkedin', true),
         'website' => get_user_meta($user_id, 'mc_website', true),
+        'facebook' => get_user_meta($user_id, 'mc_facebook', true),
         'avatar' => get_avatar_url($user_id, ['size' => 256]),
     ]);
 }
@@ -118,11 +120,9 @@ function mc_use_custom_avatar_url($url, $id_or_email, $args)
 
     if (is_numeric($id_or_email)) {
         $user_id = $id_or_email;
-    }
-    elseif (is_object($id_or_email) && !empty($id_or_email->user_id)) {
+    } elseif (is_object($id_or_email) && !empty($id_or_email->user_id)) {
         $user_id = $id_or_email->user_id;
-    }
-    elseif (is_string($id_or_email) && ($user = get_user_by('email', $id_or_email))) {
+    } elseif (is_string($id_or_email) && ($user = get_user_by('email', $id_or_email))) {
         $user_id = $user->ID;
     }
 

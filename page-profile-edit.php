@@ -54,22 +54,31 @@ $user = get_userdata($user_id);
                 <div class="flex items-start gap-6 pb-8 border-b border-light-border dark:border-dark-border">
                     <div class="relative group cursor-pointer" @click="$refs.fileInput.click()">
                         <img :src="avatarPreview || form.avatar"
-                            class="w-24 h-24 rounded-full object-cover ring-4 ring-primary/10 shadow-lg transition-opacity duration-200" :class="showCropper ? 'opacity-40' : ''" alt="Avatar">
-                        <div class="absolute inset-0 flex items-center justify-center rounded-full bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            class="w-24 h-24 rounded-full object-cover ring-4 ring-primary/10 shadow-lg transition-opacity duration-200"
+                            :class="showCropper ? 'opacity-40' : ''" alt="Avatar">
+                        <div
+                            class="absolute inset-0 flex items-center justify-center rounded-full bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
                         </div>
-                        <input type="file" x-ref="fileInput" @change="handleAvatarUpload" class="hidden" accept="image/*">
+                        <input type="file" x-ref="fileInput" @change="handleAvatarUpload" class="hidden"
+                            accept="image/*">
                     </div>
                     <div>
                         <h3 class="text-lg font-bold mb-1">Photo de profil</h3>
-                        <p class="text-sm text-gray-500 mb-3">Cliquez sur l'image pour télécharger une nouvelle photo.</p>
-                        <button type="button" @click="$refs.fileInput.click()" class="text-sm font-medium text-primary hover:underline">Modifier la photo</button>
+                        <p class="text-sm text-gray-500 mb-3">Cliquez sur l'image pour télécharger une nouvelle photo.
+                        </p>
+                        <button type="button" @click="$refs.fileInput.click()"
+                            class="text-sm font-medium text-primary hover:underline">Modifier la photo</button>
                     </div>
                 </div>
 
                 <!-- Inline Crop Panel -->
-                <div x-show="showCropper" x-cloak
-                    x-transition:enter="transition ease-out duration-300"
+                <div x-show="showCropper" x-cloak x-transition:enter="transition ease-out duration-300"
                     x-transition:enter-start="opacity-0 -translate-y-2"
                     x-transition:enter-end="opacity-100 translate-y-0"
                     x-transition:leave="transition ease-in duration-200"
@@ -77,22 +86,33 @@ $user = get_userdata($user_id);
                     x-transition:leave-end="opacity-0 -translate-y-2"
                     class="rounded-2xl border border-light-border dark:border-dark-border overflow-hidden shadow-lg">
 
-                    <div class="px-4 py-3 flex items-center justify-between bg-gray-50 dark:bg-dark-surface border-b border-light-border dark:border-dark-border">
+                    <div
+                        class="px-4 py-3 flex items-center justify-between bg-gray-50 dark:bg-dark-surface border-b border-light-border dark:border-dark-border">
                         <div class="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
                             Ajuster la photo
                         </div>
-                        <button @click="closeCropper" type="button" class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:hover:bg-dark-bg transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        <button @click="closeCropper" type="button"
+                            class="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-200 dark:hover:bg-dark-bg transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12" />
+                            </svg>
                         </button>
                     </div>
 
-                    <div class="bg-gray-900 flex items-center justify-center" style="min-height: 300px; max-height: 420px;">
+                    <div class="bg-gray-900 flex items-center justify-center"
+                        style="min-height: 300px; max-height: 420px;">
                         <img x-ref="cropperImg" class="max-w-full block">
                     </div>
 
-                    <div class="px-4 py-3 flex justify-end gap-3 bg-gray-50 dark:bg-dark-surface border-t border-light-border dark:border-dark-border">
-                        <button @click="closeCropper" type="button" class="btn-outline text-sm px-5 py-2">Annuler</button>
+                    <div
+                        class="px-4 py-3 flex justify-end gap-3 bg-gray-50 dark:bg-dark-surface border-t border-light-border dark:border-dark-border">
+                        <button @click="closeCropper" type="button"
+                            class="btn-outline text-sm px-5 py-2">Annuler</button>
                         <button @click="applyCrop" type="button" class="btn text-sm px-8 py-2">✓ Confirmer</button>
                     </div>
                 </div>
@@ -183,6 +203,22 @@ $user = get_userdata($user_id);
                                 <input type="url" x-model="form.website"
                                     class="block w-full pl-11 pr-4 py-3 bg-white/50 dark:bg-dark-bg/50 border border-gray-200 dark:border-gray-700 rounded-xl text-dark-bg dark:text-light-bg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
                                     placeholder="https://yourwebsite.com">
+                            </div>
+                        </div>
+                        <div>
+                            <label
+                                class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 ml-1">Facebook
+                                URL</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <svg class="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            d="M22.675 0h-21.35c-.732 0-1.325.593-1.325 1.325v21.351c0 .731.593 1.324 1.325 1.324h11.495v-9.294h-3.128v-3.622h3.128v-2.671c0-3.1 1.893-4.788 4.659-4.788 1.325 0 2.463.099 2.795.143v3.24l-1.918.001c-1.504 0-1.795.715-1.795 1.763v2.313h3.587l-.467 3.622h-3.12v9.293h6.116c.73 0 1.323-.593 1.323-1.325v-21.35c0-.732-.593-1.325-1.325-1.325z" />
+                                    </svg>
+                                </div>
+                                <input type="url" x-model="form.facebook"
+                                    class="block w-full pl-11 pr-4 py-3 bg-white/50 dark:bg-dark-bg/50 border border-gray-200 dark:border-gray-700 rounded-xl text-dark-bg dark:text-light-bg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                                    placeholder="https://facebook.com/username">
                             </div>
                         </div>
                     </div>

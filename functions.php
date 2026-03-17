@@ -91,11 +91,11 @@ function medium_clone_scripts()
         'profile_url' => esc_url(mc_get_page_url('profile-edit')),
         'search_url' => esc_url(home_url('/?s=')),
         'categories' => array_map(function ($cat) {
-        return [
-        'id' => $cat->term_id,
-        'name' => $cat->name
-        ];
-    }, get_categories(['hide_empty' => false])),
+            return [
+                'id' => $cat->term_id,
+                'name' => $cat->name
+            ];
+        }, get_categories(['hide_empty' => false])),
     ]);
 }
 add_action('wp_enqueue_scripts', 'medium_clone_scripts');
@@ -117,7 +117,7 @@ add_filter('script_loader_tag', function ($tag, $handle) {
 /* ------------------------------------------------------------------ */
 function mc_get_page_url($key)
 {
-    $id = (int)get_option('mc_page_' . $key);
+    $id = (int) get_option('mc_page_' . $key);
     if ($id) {
         return get_permalink($id);
     }
@@ -162,7 +162,7 @@ function mc_create_required_pages()
 
     foreach ($pages as $slug => $data) {
         $opt_key = 'mc_page_' . $slug;
-        $existing = (int)get_option($opt_key);
+        $existing = (int) get_option($opt_key);
 
         // Check if still valid
         if ($existing && get_post($existing) && get_post_status($existing) === 'publish') {
@@ -205,7 +205,7 @@ function medium_clone_deactivate()
     $slugs = ['login', 'dashboard', 'profile-edit'];
     foreach ($slugs as $slug) {
         $opt_key = 'mc_page_' . $slug;
-        $page_id = (int)get_option($opt_key);
+        $page_id = (int) get_option($opt_key);
         if ($page_id) {
             wp_delete_post($page_id, true);
             delete_option($opt_key);
@@ -282,8 +282,7 @@ function mc_handle_auth_action()
         }
         wp_send_json_success(['redirect' => home_url()]);
 
-    }
-    else {
+    } else {
         $name = sanitize_text_field($_POST['name']);
 
         if (email_exists($email)) {
@@ -369,8 +368,7 @@ function mc_filter_home_by_following($query)
             if (!empty($following_ids)) {
                 // On limite la requête à ces auteurs
                 $query->set('author__in', $following_ids);
-            }
-            else {
+            } else {
                 // Si l'utilisateur ne suit personne, on affiche aucun post (ou un message)
                 $query->set('post__in', [0]);
             }
@@ -391,7 +389,8 @@ add_action('pre_get_posts', function ($query) {
 /* ------------------------------------------------------------------ */
 /* Custom Comment Format Helper                                       */
 /* ------------------------------------------------------------------ */
-function mc_custom_comment_format($comment, $args, $depth) {
+function mc_custom_comment_format($comment, $args, $depth)
+{
     $is_reply = $depth > 1;
     ?>
     <div <?php comment_class('mc-comment group'); ?> id="comment-<?php comment_ID(); ?>">
@@ -425,10 +424,10 @@ function mc_custom_comment_format($comment, $args, $depth) {
                 <!-- Reply link -->
                 <div class="mt-2">
                     <?php comment_reply_link(array_merge($args, [
-                        'depth'     => $depth,
+                        'depth' => $depth,
                         'max_depth' => $args['max_depth'],
-                        'before'    => '<button class="text-[11px] font-medium text-gray-400 hover:text-primary transition-colors flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>',
-                        'after'     => '</button>'
+                        'before' => '<button class="text-[11px] font-medium text-gray-400 hover:text-primary transition-colors flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>',
+                        'after' => '</button>'
                     ])); ?>
                 </div>
             </div>
@@ -473,7 +472,7 @@ function mc_ajax_post_comment_handler()
     if (function_exists('mc_add_notification')) {
         $actor_id = get_current_user_id();
         $parent_id = intval($_POST['comment_parent']);
-        
+
         if ($parent_id > 0) {
             // Reply: Notify the parent comment author
             $parent_comment = get_comment($parent_id);
@@ -526,7 +525,7 @@ function mc_ajax_load_comments_handler()
         ?>
     </div>
     <div class="comment-navigation pt-8">
-        <?php 
+        <?php
         echo paginate_comments_links([
             'echo' => false,
             'current' => $page,
@@ -534,7 +533,7 @@ function mc_ajax_load_comments_handler()
             'total' => get_comment_pages_count($comments, get_option('comments_per_page')),
             'prev_text' => '&larr; Older',
             'next_text' => 'Newer &rarr;',
-        ]); 
+        ]);
         ?>
     </div>
     <?php
@@ -544,3 +543,28 @@ function mc_ajax_load_comments_handler()
 }
 add_action('wp_ajax_mc_ajax_load_comments', 'mc_ajax_load_comments_handler');
 add_action('wp_ajax_nopriv_mc_ajax_load_comments', 'mc_ajax_load_comments_handler');
+
+
+/**
+ * Enregistre le flux personnalisé "following"
+ */
+function mc_register_following_feed()
+{
+    add_feed('following', 'mc_render_following_feed');
+}
+add_action('init', 'mc_register_following_feed');
+
+/**
+ * Logique d'affichage du flux
+ */
+function mc_render_following_feed()
+{
+    // 1. On retire l'en-tête XML par défaut de WordPress et on force le HTML
+    header('Content-Type: ' . get_option('html_type') . '; charset=' . get_option('blog_charset'));
+
+    // 2. On charge le template
+    include(get_template_directory() . '/index.php');
+
+    // 3. On arrête l'exécution ici pour éviter que WP n'ajoute du code XML après
+    exit;
+}

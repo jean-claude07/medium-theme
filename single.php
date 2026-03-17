@@ -6,6 +6,7 @@
     $word_count = str_word_count(strip_tags(get_the_content()));
     $reading_time = max(1, round($word_count / 200));
     $rs = mc_get_reactions(get_the_ID());
+    $is_following = function_exists('mc_is_following') && is_user_logged_in() ? mc_is_following(get_current_user_id(), $author_id) : false;
     ?>
 
     <!-- Reading Progress Bar -->
@@ -120,9 +121,25 @@
                                     class="text-sm font-semibold text-dark-bg dark:text-light-bg hover:text-primary dark:hover:text-primary transition-colors">
                                     <?php echo get_the_author(); ?>
                                 </a>
-                                <span class="text-gray-300 dark:text-gray-600">·</span>
-                                <button
-                                    class="text-xs text-primary hover:text-emerald-600 font-semibold transition-colors">Follow</button>
+                                <?php if (!is_user_logged_in() || get_current_user_id() !== (int) $author_id): ?>
+                                    <span class="text-gray-300 dark:text-gray-600">·</span>
+                                    <button @click="toggleFollow" x-data="{
+                                        following: <?php echo $is_following ? 'true' : 'false'; ?>,
+                                        toggleFollow() {
+                                            if (!mediumCloneData.nonce) {
+                                                window.location.href = '<?php echo mc_get_page_url('login'); ?>';
+                                                return;
+                                            }
+                                            this.following = !this.following;
+                                            fetch(mediumCloneData.root_url + '/wp-json/mediumclone/v1/follow', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': mediumCloneData.nonce },
+                                                body: JSON.stringify({ user_id: <?php echo $author_id; ?> })
+                                            });
+                                        }
+                                    }" x-text="following ? 'Following' : 'Follow'"
+                                        class="text-xs text-primary hover:text-emerald-600 font-semibold transition-colors"></button>
+                                <?php endif; ?>
                             </div>
                             <div class="flex items-center gap-1.5 text-xs text-gray-400 mt-0.5">
                                 <span><?php echo get_the_date('M j, Y'); ?></span>
@@ -270,12 +287,29 @@
                     </button>
 
                     <!-- Share -->
-                    <button
-                        onclick="navigator.share && navigator.share({title: '<?php echo esc_js(get_the_title()); ?>', url: window.location.href})"
-                        class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75"
+                    <button x-data="{ 
+        copied: false,
+        share() {
+            const data = { title: '<?php echo esc_js(get_the_title()); ?>', url: window.location.href };
+            if (navigator.share) {
+                navigator.share(data);
+            } else {
+                navigator.clipboard.writeText(data.url);
+                this.copied = true;
+                setTimeout(() => this.copied = false, 2000);
+            }
+        }
+    }" @click="share()" :class="copied ? 'text-primary' : 'text-gray-400'"
+                        class="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+
+                        <svg x-show="!copied" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
                                 d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                        </svg>
+
+                        <svg x-show="copied" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            style="display:none;">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
                     </button>
                 </div>
@@ -301,7 +335,37 @@
                     </p>
                 </div>
                 <div class="flex-none">
-                    <button class="btn text-xs px-4 py-2">Follow</button>
+                    <?php if (!is_user_logged_in()): ?>
+                        <a class="btn text-xs px-4 py-2" href="<?php echo mc_get_page_url('login'); ?>">
+                            Sign In to Follow
+                        </a>
+                    <?php elseif (get_current_user_id() === (int) $author_id): ?>
+                        <a class="btn text-xs px-4 py-2" href="<?php echo mc_get_page_url('profile-edit'); ?>">
+                            Edit Profile
+                        </a>
+                    <?php else: ?>
+                        <button class="btn w-full justify-center" @click="toggleFollow" x-data="{
+                following: <?php echo $is_following ? 'true' : 'false'; ?>,
+                toggleFollow() {
+                    if (!mediumCloneData.nonce) {
+                        window.location.href = '<?php echo mc_get_page_url('login'); ?>';
+                        return;
+                    }
+                    this.following = !this.following;
+                    fetch(mediumCloneData.root_url + '/wp-json/mediumclone/v1/follow', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-WP-Nonce': mediumCloneData.nonce
+                        },
+                        body: JSON.stringify({ user_id: <?php echo $author_id; ?> })
+                    });
+                }
+            }" x-text="following ? 'Following' : 'Follow'"
+                            :class="following ? '!bg-gray-200 !text-gray-800 dark:!bg-gray-700 dark:!text-gray-200' : ''">
+                            <?php echo $is_following ? 'Following' : 'Follow'; ?>
+                        </button>
+                    <?php endif; ?>
                 </div>
             </div>
 
