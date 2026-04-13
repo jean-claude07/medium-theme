@@ -116,24 +116,29 @@ function mc_get_profile_handler($request)
 add_filter('get_avatar_url', 'mc_use_custom_avatar_url', 10, 3);
 function mc_use_custom_avatar_url($url, $id_or_email, $args)
 {
-    $user_id = null;
+    $user = null;
 
+    // Récupération de l'objet utilisateur pour avoir accès au nom
     if (is_numeric($id_or_email)) {
-        $user_id = $id_or_email;
+        $user = get_user_by('id', $id_or_email);
     } elseif (is_object($id_or_email) && !empty($id_or_email->user_id)) {
-        $user_id = $id_or_email->user_id;
-    } elseif (is_string($id_or_email) && ($user = get_user_by('email', $id_or_email))) {
-        $user_id = $user->ID;
+        $user = get_user_by('id', $id_or_email->user_id);
+    } elseif (is_string($id_or_email)) {
+        $user = get_user_by('email', $id_or_email);
     }
 
-    if ($user_id) {
-        $avatar_id = get_user_meta($user_id, 'mc_custom_avatar', true);
+    if ($user) {
+        // 1. Vérifier d'abord si une image personnalisée existe
+        $avatar_id = get_user_meta($user->ID, 'mc_custom_avatar', true);
         if ($avatar_id) {
             $custom_url = wp_get_attachment_image_url($avatar_id, 'thumbnail');
-            if ($custom_url) {
-                return $custom_url;
-            }
+            if ($custom_url) return $custom_url;
         }
+
+        // 2. Sinon, générer l'URL avec l'initiale du Pseudo (display_name)
+        $initial = mb_substr($user->display_name, 0, 1);
+        return "https://ui-avatars.com/api/?name=" . urlencode($initial) . "&size=128&background=random";
     }
+
     return $url;
 }

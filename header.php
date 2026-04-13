@@ -1,3 +1,10 @@
+<?php
+// If this is the offline page, use the standalone offline template
+if (is_page('offline')) {
+    include get_template_directory() . '/templates/offline.php';
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html <?php language_attributes(); ?> class="antialiased">
 <head>

@@ -251,7 +251,9 @@ require_once MEDIUM_CLONE_DIR . 'inc/seo/seo.php';
 require_once MEDIUM_CLONE_DIR . 'inc/gutenberg/blocks.php';
 require_once MEDIUM_CLONE_DIR . 'inc/post/post-handler.php';
 require_once MEDIUM_CLONE_DIR . 'inc/profile/profile.php';
+require_once MEDIUM_CLONE_DIR . 'inc/emails.php';
 require_once get_template_directory() . '/inc/rest-api.php';
+require_once MEDIUM_CLONE_DIR . 'inc/pwa/pwa.php';
 
 /**
  * Medium Clone — Auth Logic
@@ -283,23 +285,24 @@ function mc_handle_auth_action()
         wp_send_json_success(['redirect' => home_url()]);
 
     } else {
-        $name = sanitize_text_field($_POST['name']);
+        $name = sanitize_text_field($_POST['name'] ?? '');
+        
+        $result = mc_process_registration_logic($email, $password, $name);
 
-        if (email_exists($email)) {
-            wp_send_json_error('Cet email est déjà utilisé.');
+        if (is_wp_error($result)) {
+            wp_send_json_error($result->get_error_message());
         }
 
-        $user_id = wp_create_user($email, $password, $email);
-
-        if (is_wp_error($user_id)) {
-            wp_send_json_error($user_id->get_error_message());
+        // Si l'activation par e-mail est requise (status === 'pending')
+        if (isset($result['status']) && $result['status'] === 'pending') {
+            wp_send_json_success([
+                'status' => 'pending',
+                'message' => $result['message']
+            ]);
         }
 
-        // Mise à jour du nom d'affichage
-        wp_update_user(['ID' => $user_id, 'display_name' => $name]);
-
-        // Connecter l'utilisateur automatiquement après inscription
-        wp_set_auth_cookie($user_id);
+        // Fallback si jamais on désactive l'activation par mail dans le futur
+        wp_set_auth_cookie(get_user_by('email', $email)->ID);
         wp_send_json_success(['redirect' => home_url()]);
     }
 }
@@ -318,23 +321,47 @@ function mc_hide_admin_bar()
 }
 
 /* ------------------------------------------------------------------ */
-/* Restrict WP-Admin access                                            */
+/* Restrict WP-Admin access & Redirect Logins                         */
 /* ------------------------------------------------------------------ */
 add_action('admin_init', 'mc_restrict_admin_with_redirect');
 
 function mc_restrict_admin_with_redirect()
 {
-    // On autorise AJAX (indispensable pour ton système d'auth et de posts)
+    // On autorise AJAX
     if (defined('DOING_AJAX') && DOING_AJAX) {
         return;
     }
 
-    // Si l'utilisateur n'est pas admin, on le redirige vers son dashboard frontend
+    // Rediriger les non-admins vers le dashboard ou la page de login
     if (!current_user_can('administrator')) {
-        wp_safe_redirect(mc_get_page_url('dashboard'));
+        if (is_user_logged_in()) {
+            wp_safe_redirect(mc_get_page_url('dashboard'));
+        } else {
+            wp_safe_redirect(mc_get_page_url('login'));
+        }
         exit;
     }
 }
+
+/**
+ * Redirect wp-login.php to custom theme login page
+ */
+add_action('init', 'mc_redirect_to_custom_login');
+function mc_redirect_to_custom_login() {
+    global $pagenow;
+    // Check if we are on the login page and it's not a logout action
+    if ($pagenow == 'wp-login.php' && $_SERVER['REQUEST_METHOD'] == 'GET' && !isset($_GET['action'])) {
+        wp_redirect(mc_get_page_url('login'));
+        exit;
+    }
+}
+
+/**
+ * Ensure WordPress uses the custom login URL everywhere
+ */
+add_filter('login_url', function($login_url, $redirect, $force_reauth) {
+    return mc_get_page_url('login');
+}, 10, 3);
 
 /**
  * Filtre la page d'accueil pour n'afficher que les auteurs suivis 
@@ -393,7 +420,8 @@ function mc_custom_comment_format($comment, $args, $depth)
 {
     $is_reply = $depth > 1;
     ?>
-    <div <?php comment_class('mc-comment group'); ?> id="comment-<?php comment_ID(); ?>">
+    <div <?php comment_class('mc-comment group ' . ($is_reply ? 'ml-6 md:ml-10 border-l border-gray-100 dark:border-gray-800 pl-4 py-2 mt-2' : 'border-b border-gray-50 dark:border-gray-800/50 py-6 last:border-0')); ?>
+        id="comment-<?php comment_ID(); ?>">
         <div class="flex items-start gap-3">
 
             <!-- Avatar -->
@@ -508,6 +536,7 @@ function mc_ajax_load_comments_handler()
     $comments = get_comments([
         'post_id' => $post_id,
         'status' => 'approve',
+        'order' => 'DESC',
     ]);
 
     ob_start();

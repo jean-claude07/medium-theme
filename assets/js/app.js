@@ -95,7 +95,15 @@ document.addEventListener("alpine:init", () => {
         const result = await res.json();
 
         if (result.success) {
-          window.location.href = mediumCloneData.root_url;
+          if (result.data && result.data.status === "pending") {
+            // Inscription réussie mais activation requise
+            this.tab = "login"; // On repasse sur login
+            this.form.password = ""; // On vide le pass
+            this.error = result.data.message; // On affiche le message dans la zone d'erreur (ou une autre zone de succès)
+            // Note : Ici on utilise this.error pour plus de simplicité, mais on pourrait avoir une this.successMessage
+          } else {
+            window.location.href = result.data.redirect || mediumCloneData.root_url;
+          }
         } else {
           this.error = result.data || "Une erreur est survenue";
         }
@@ -182,6 +190,7 @@ document.addEventListener("alpine:init", () => {
         const videoId = match && match[2].length === 11 ? match[2] : null;
 
         if (videoId) {
+          this.form.youtube_url = cleanUrl;
           embedHtml = `
             <div class="my-6 aspect-video bg-gray-900 rounded-xl overflow-hidden shadow-lg border border-gray-100 dark:border-gray-800">
                 <iframe src="https://www.youtube.com/embed/${videoId}" 
@@ -193,11 +202,14 @@ document.addEventListener("alpine:init", () => {
                     allowfullscreen>
                 </iframe>
             </div><p><br></p>`;
+          this.message = "Vidéo YouTube insérée !";
+          setTimeout(() => (this.message = ""), 3000);
         } else {
           alert("L'URL YouTube ne semble pas valide. Vérifiez le lien.");
           return;
         }
       } else {
+        this.form.social_link = url;
         let platformName = "Médias sociaux";
         let platformColor = "text-primary";
         const lowerUrl = url.toLowerCase();
@@ -227,6 +239,8 @@ document.addEventListener("alpine:init", () => {
             <p class="text-sm font-bold text-gray-800 dark:text-gray-200 mb-2">Contenu ${platformName}</p>
             <a href="${url}" target="_blank" rel="noopener noreferrer" class="text-xs text-blue-500 hover:text-blue-600 underline break-all line-clamp-2">${url}</a>
         </div><p><br></p>`;
+        this.message = "Lien social inséré !";
+        setTimeout(() => (this.message = ""), 3000);
       }
 
       if (embedHtml) {
@@ -761,3 +775,272 @@ document.addEventListener("alpine:init", () => {
     },
   }));
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PWA — Service Worker, Install Prompt, Push Notifications
+   ═══════════════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  // Guard: mcPWA must be available (injected by PHP)
+  if (typeof mcPWA === 'undefined') return;
+
+  const pwa = mcPWA;
+
+  /* ── 1. Service Worker Registration ─── */
+  if ('serviceWorker' in navigator && pwa.sw_enabled) {
+    window.addEventListener('load', async () => {
+      try {
+        const reg = await navigator.serviceWorker.register(pwa.sw_url, {
+          scope: pwa.sw_scope,
+        });
+
+        console.log('[PWA] SW registered. Scope:', reg.scope);
+
+        // Detect updates
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          if (!newWorker) return;
+
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              mcPWAShowUpdateBanner(newWorker);
+            }
+          });
+        });
+
+        // Cache current page for offline access
+        if (navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'CACHE_PAGE',
+            url: location.href,
+          });
+        }
+
+      } catch (err) {
+        console.warn('[PWA] SW registration failed:', err);
+      }
+    });
+  }
+
+  /* ── 2. Dynamic theme-color for dark mode ─── */
+  function mcPWAUpdateThemeColor() {
+    const isDark = document.documentElement.classList.contains('dark');
+    const color = isDark ? (pwa.dark_theme_color || '#0f172a') : (pwa.theme_color || '#10b981');
+    const meta = document.getElementById('mc-theme-color');
+    if (meta) meta.content = color;
+  }
+
+  // Run on load + observe dark class changes
+  mcPWAUpdateThemeColor();
+  const htmlObserver = new MutationObserver(mcPWAUpdateThemeColor);
+  htmlObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+  /* ── 3. Install Prompt (A2HS) ─── */
+  let deferredPrompt = null;
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+
+    // Only show if not dismissed recently
+    const dismissed = localStorage.getItem('mc_pwa_install_dismissed');
+    const dismissedAt = dismissed ? parseInt(dismissed) : 0;
+    const daysSinceDismiss = (Date.now() - dismissedAt) / (1000 * 60 * 60 * 24);
+
+    if (daysSinceDismiss > 7 || !dismissed) {
+      setTimeout(() => mcPWAShowInstallBanner(), 3000);
+    }
+  });
+
+  window.addEventListener('appinstalled', () => {
+    console.log('[PWA] App installée avec succès !');
+    deferredPrompt = null;
+    const banner = document.getElementById('mc-pwa-install-banner');
+    if (banner) banner.remove();
+    localStorage.setItem('mc_pwa_installed', '1');
+  });
+
+  function mcPWAShowInstallBanner() {
+    if (document.getElementById('mc-pwa-install-banner')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'mc-pwa-install-banner';
+    banner.innerHTML = `
+      <div style="
+        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(120px);
+        background: var(--mc-pwa-bg, #1e293b);
+        color: var(--mc-pwa-text, #f1f5f9);
+        border: 1px solid rgba(16,185,129,.3);
+        border-radius: 16px; box-shadow: 0 8px 40px rgba(0,0,0,.35);
+        padding: 16px 20px; display: flex; align-items: center; gap: 14px;
+        max-width: 420px; width: calc(100% - 40px); z-index: 99999;
+        font-family: 'Inter', system-ui, sans-serif;
+        animation: mcPWASlideUp .4s cubic-bezier(.34,1.56,.64,1) forwards;
+        backdrop-filter: blur(12px);
+      " id="mc-pwa-install-inner">
+        <img src="${(typeof mediumCloneData !== 'undefined' ? mediumCloneData.root_url : '')}/wp-content/themes/theme-medium-clone/assets/images/icons/icon-72x72.png"
+             width="44" height="44" style="border-radius:10px; flex-shrink:0; box-shadow:0 2px 8px rgba(0,0,0,.3);" alt="Icon">
+        <div style="flex:1; min-width:0;">
+          <div style="font-weight:700; font-size:.92rem; margin-bottom:2px;">${pwa.app_name || 'Medium Clone'}</div>
+          <div style="font-size:.78rem; opacity:.75; line-height:1.4;">Installer l'application pour une expérience native hors-ligne</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px; flex-shrink:0;">
+          <button id="mc-pwa-install-btn" style="
+            background: linear-gradient(135deg, #10b981, #059669);
+            color:#fff; border:none; border-radius:8px; padding:7px 14px;
+            font-size:.8rem; font-weight:700; cursor:pointer; white-space:nowrap;
+            box-shadow:0 2px 8px rgba(16,185,129,.4);
+          ">Installer</button>
+          <button id="mc-pwa-dismiss-btn" style="
+            background:transparent; color:rgba(148,163,184,.8);
+            border:none; font-size:.75rem; cursor:pointer; padding:4px;
+          ">Plus tard</button>
+        </div>
+      </div>
+      <style>
+        @keyframes mcPWASlideUp {
+          from { transform: translateX(-50%) translateY(120px); opacity:0; }
+          to   { transform: translateX(-50%) translateY(0);   opacity:1; }
+        }
+        :root { --mc-pwa-bg: #1e293b; --mc-pwa-text: #f1f5f9; }
+        html:not(.dark) { --mc-pwa-bg: #ffffff; --mc-pwa-text: #0f172a; }
+      </style>
+    `;
+
+    document.body.appendChild(banner);
+
+    document.getElementById('mc-pwa-install-btn').addEventListener('click', async () => {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log('[PWA] Install outcome:', outcome);
+      deferredPrompt = null;
+      banner.remove();
+    });
+
+    document.getElementById('mc-pwa-dismiss-btn').addEventListener('click', () => {
+      localStorage.setItem('mc_pwa_install_dismissed', Date.now().toString());
+      const inner = document.getElementById('mc-pwa-install-inner');
+      if (inner) {
+        inner.style.transition = 'transform .3s ease, opacity .3s ease';
+        inner.style.transform = 'translateX(-50%) translateY(120px)';
+        inner.style.opacity = '0';
+        setTimeout(() => banner.remove(), 320);
+      }
+    });
+  }
+
+  /* ── 4. Update Available Banner ─── */
+  function mcPWAShowUpdateBanner(newWorker) {
+    if (document.getElementById('mc-pwa-update-banner')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'mc-pwa-update-banner';
+    banner.innerHTML = `
+      <div style="
+        position: fixed; top: 16px; right: 16px;
+        background: var(--mc-pwa-bg, #1e293b);
+        color: var(--mc-pwa-text, #f1f5f9);
+        border: 1px solid rgba(99,102,241,.4);
+        border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,.25);
+        padding: 14px 18px; display: flex; align-items: center; gap: 12px;
+        z-index: 99999; font-family: 'Inter', system-ui, sans-serif;
+        animation: mcPWAFadeIn .3s ease;
+        max-width: 320px;
+      ">
+        <span style="font-size:1.4rem;">🔄</span>
+        <div style="flex:1;">
+          <div style="font-weight:700; font-size:.88rem;">Mise à jour disponible</div>
+          <div style="font-size:.78rem; opacity:.7;">Rechargez pour obtenir la dernière version</div>
+        </div>
+        <button id="mc-pwa-update-btn" style="
+          background:linear-gradient(135deg,#6366f1,#4f46e5);
+          color:#fff; border:none; border-radius:7px; padding:6px 12px;
+          font-size:.78rem; font-weight:700; cursor:pointer; flex-shrink:0;
+        ">Recharger</button>
+      </div>
+      <style>
+        @keyframes mcPWAFadeIn { from{opacity:0;transform:translateY(-10px)} to{opacity:1;transform:translateY(0)} }
+      </style>
+    `;
+
+    document.body.appendChild(banner);
+
+    document.getElementById('mc-pwa-update-btn').addEventListener('click', () => {
+      newWorker.postMessage({ type: 'SKIP_WAITING' });
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        window.location.reload();
+      });
+    });
+  }
+
+  /* ── 5. Push Notifications ─── */
+  if (pwa.push_enabled && pwa.vapid_public_key && 'PushManager' in window) {
+    navigator.serviceWorker.ready.then(async (reg) => {
+      try {
+        const existing = await reg.pushManager.getSubscription();
+        if (!existing) return; // Ne s'abonne pas automatiquement — attendre l'action utilisateur
+
+        // Si déjà abonné, on re-synchronise avec le serveur
+        await mcPWASendSubscriptionToServer(existing);
+      } catch (err) {
+        console.warn('[PWA] Push setup error:', err);
+      }
+    });
+  }
+
+  async function mcPWASubscribeToPush() {
+    if (!pwa.vapid_public_key) {
+      console.warn('[PWA] VAPID public key manquante.');
+      return null;
+    }
+
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: mcPWAUrlBase64ToUint8Array(pwa.vapid_public_key),
+      });
+
+      await mcPWASendSubscriptionToServer(subscription);
+      return subscription;
+    } catch (err) {
+      console.warn('[PWA] Push subscription error:', err);
+      return null;
+    }
+  }
+
+  async function mcPWASendSubscriptionToServer(subscription) {
+    try {
+      await fetch(pwa.push_subscribe_url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-WP-Nonce': (typeof mediumCloneData !== 'undefined') ? mediumCloneData.nonce : '',
+        },
+        body: JSON.stringify(subscription.toJSON()),
+      });
+    } catch (err) {
+      console.warn('[PWA] Failed to send subscription to server:', err);
+    }
+  }
+
+  function mcPWAUrlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  // Expose globally pour usage depuis d'autres scripts
+  window.mcPWA = {
+    ...pwa,
+    subscribeToNotifications: mcPWASubscribeToPush,
+  };
+
+})();

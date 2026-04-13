@@ -31,15 +31,70 @@ function mc_register_handler($request)
     $password = $request->get_param('password');
     $name = sanitize_text_field($request->get_param('name'));
 
+    $result = mc_process_registration_logic($email, $password, $name);
+
+    if (is_wp_error($result)) {
+        return $result;
+    }
+
+    return rest_ensure_response($result);
+}
+
+/**
+ * Core registration logic shared between REST and AJAX
+ */
+function mc_process_registration_logic($email, $password, $name)
+{
+    // 1. Vérification des champs vides
     if (empty($email) || empty($password) || empty($name)) {
-        return new WP_Error('missing_fields', 'Please fill in all fields', ['status' => 400]);
+        return new WP_Error('missing_fields', 'Veuillez remplir tous les champs', ['status' => 400]);
     }
 
+    // 2. Bannir les e-mails jetables
+    $disposable_domains = [
+        'yopmail.com', 'yopmail.fr', 'yopmail.net', 'temp-mail.org', 'tempmail.com',
+        'tempmail.net', 'tempmailaddress.com', 'guerrillamail.com', 'guerrillamail.net',
+        'guerrillamail.org', 'sharklasers.com', 'grr.la', 'mailinator.com',
+        'mailinator.net', 'mailinator.org', 'trashmail.com', 'trashmail.net',
+        'trashmail.org', '10minutemail.com', '10minutemail.net', '10minutemail.org',
+        'minuteinbox.com', 'fakeinbox.com', 'throwawaymail.com', 'getnada.com',
+        'nada.ltd', 'dispostable.com', 'maildrop.cc', 'mailnesia.com',
+        'tempinbox.com', 'moakt.com', 'emailondeck.com', 'mintemail.com',
+        'spamgourmet.com', 'spambog.com', 'spamavert.com', 'tempail.com',
+        'tempemail.co', 'tempemail.com', 'tempmailo.com', 'emailfake.com',
+        'fake-mail.net', 'easytrashmail.com', 'jetable.org', 'jetable.com',
+        'jetable.fr', 'mytrashmail.com', 'trashmail.de', 'wegwerfmail.de',
+        'wegwerfmail.net', 'wegwerfmail.org', 'mail-temporaire.fr', 'mailcatch.com',
+        'mailnull.com', 'bccto.me', 'chacuo.net', 'disposablemail.com',
+        'dropmail.me', 'dropmail.org', 'mailpoof.com', 'temp-mail.io',
+        'tmpmail.org', 'tmpmail.net', 'tmpmail.com', 'mail.tm', 'guerrillamailblock.com'
+    ];
+    
+    $email_domain = substr(strrchr($email, "@"), 1);
+    
+    if (in_array(strtolower($email_domain), $disposable_domains)) {
+        return new WP_Error('disposable_email', 'Les e-mails jetables ne sont pas autorisés.', ['status' => 400]);
+    }
+
+    // 3. Vérifier si l'email existe déjà
     if (email_exists($email)) {
-        return new WP_Error('email_exists', 'Email already in use', ['status' => 400]);
+        return new WP_Error('email_exists', 'Cet e-mail est déjà utilisé', ['status' => 400]);
     }
 
-    $user_id = wp_create_user($email, $password, $email);
+    // 4. Vérifier si le NOM (display_name) est unique
+    $user_query = get_users([
+        'search'         => $name,
+        'search_columns' => ['display_name', 'user_nicename'],
+        'number'         => 1
+    ]);
+
+    if (!empty($user_query)) {
+        return new WP_Error('name_exists', 'Ce nom est déjà pris, veuillez en choisir un autre.', ['status' => 400]);
+    }
+
+    // 5. Création de l'utilisateur
+    // Note : On utilise le nom comme 'user_login' pour garantir l'unicité au niveau de la DB
+    $user_id = wp_create_user($name, $password, $email);
 
     if (is_wp_error($user_id)) {
         return $user_id;
@@ -48,33 +103,35 @@ function mc_register_handler($request)
     $user = new WP_User($user_id);
     $user->set_role('subscriber');
 
-    update_user_meta($user_id, 'mc_account_status', 'pending');
-
-    // Update name
+    // Mise à jour des infos et du statut
     wp_update_user([
-        'ID' => $user_id,
+        'ID'           => $user_id,
         'display_name' => $name,
-        'first_name' => $name
+        'first_name'   => $name
     ]);
 
     $activation_key = wp_generate_password(20, false);
     update_user_meta($user_id, 'mc_activation_key', $activation_key);
     update_user_meta($user_id, 'mc_account_status', 'pending');
 
+    // Envoi de l'e-mail
     $activation_link = add_query_arg([
         'action' => 'mc_activate',
-        'key' => $activation_key,
-        'user' => $user_id
+        'key'    => $activation_key,
+        'user'   => $user_id
     ], home_url('/login/'));
+    
     $subject = "Confirmez votre inscription sur MediumClone";
-    $message = "Bonjour $name,\n\nCliquez sur ce lien pour activer votre compte : \n" . $activation_link;
+    
+    mc_send_template_email($email, $subject, 'activation', [
+        'name' => $name,
+        'activation_link' => $activation_link
+    ]);
 
-    wp_mail($email, $subject, $message);
-
-    return rest_ensure_response([
+    return [
         'status' => 'pending',
         'message' => 'Veuillez vérifier votre boîte e-mail pour activer votre compte.'
-    ]);
+    ];
 }
 
 function mc_login_handler($request)

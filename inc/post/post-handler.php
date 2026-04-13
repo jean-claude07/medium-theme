@@ -54,10 +54,37 @@ function mc_create_or_update_post($request)
         'height' => true,
         'frameborder' => true,
         'allowfullscreen' => true,
+        'allow' => true,
         'title' => true,
         'class' => true,
+        'loading' => true,
     );
-    $allowed_html['div']['class'] = true;
+    $allowed_html['div'] = array(
+        'class' => true,
+        'id' => true,
+        'style' => true,
+    );
+    $allowed_html['a'] = array(
+        'href' => true,
+        'title' => true,
+        'class' => true,
+        'target' => true,
+        'rel' => true,
+    );
+    $allowed_html['svg'] = array(
+        'class' => true,
+        'fill' => true,
+        'viewbox' => true,
+        'stroke' => true,
+        'width' => true,
+        'height' => true,
+    );
+    $allowed_html['path'] = array(
+        'd' => true,
+        'stroke-linecap' => true,
+        'stroke-linejoin' => true,
+        'stroke-width' => true,
+    );
 
     $content = wp_kses($raw_content, $allowed_html);
 
