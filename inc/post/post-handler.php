@@ -35,6 +35,11 @@ function mc_create_or_update_post($request)
     $raw_content = $request->get_param('content');
     $status = sanitize_text_field($request->get_param('status'));
 
+    // Check if user is restricted
+    if (function_exists('mc_is_user_restricted') && mc_is_user_restricted($user_id)) {
+        return new WP_Error('restricted_account', 'Votre compte est restreint. Vous ne pouvez pas publier de contenu.', ['status' => 403]);
+    }
+
     // Custom Fields
     $youtube_url = esc_url_raw($request->get_param('youtube_url'));
     $social_link = esc_url_raw($request->get_param('social_link'));

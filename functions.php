@@ -254,6 +254,8 @@ require_once MEDIUM_CLONE_DIR . 'inc/profile/profile.php';
 require_once MEDIUM_CLONE_DIR . 'inc/emails.php';
 require_once get_template_directory() . '/inc/rest-api.php';
 require_once MEDIUM_CLONE_DIR . 'inc/pwa/pwa.php';
+require_once MEDIUM_CLONE_DIR . 'inc/moderation/moderation.php';
+require_once MEDIUM_CLONE_DIR . 'inc/moderation/admin-dashboard.php';
 
 /**
  * Medium Clone — Auth Logic

@@ -153,6 +153,9 @@ function mc_login_handler($request)
     if ($status === 'pending') {
         return new WP_Error('not_activated', 'Votre compte n\'est pas encore activé. Vérifiez vos e-mails.', ['status' => 403]);
     }
+    if ($status === 'restricted') {
+        return new WP_Error('restricted_account', 'Votre compte a été restreint pour non-respect des conditions d\'utilisation.', ['status' => 403]);
+    }
 
     wp_set_current_user($user->ID);
     wp_set_auth_cookie($user->ID);

@@ -131,6 +131,10 @@ endif; ?>
                         <button @click="navigator.clipboard.writeText('<?php the_permalink(); ?>'); open = false;"
                             class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800">Copy
                             link</button>
+                        <button x-data="moderation(<?php the_ID(); ?>)" @click="report(); open = false;"
+                            class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 text-red-500">
+                            Report post
+                        </button>
                     </div>
                 </div>
             </div>

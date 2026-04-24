@@ -774,6 +774,47 @@ document.addEventListener("alpine:init", () => {
       });
     },
   }));
+
+  Alpine.data("moderation", (postId) => ({
+    loading: false,
+    reported: false,
+    async report() {
+      if (!mediumCloneData.is_logged_in) {
+        window.location.href = mediumCloneData.login_url;
+        return;
+      }
+
+      if (!confirm("Voulez-vous vraiment signaler cette publication ?")) return;
+
+      this.loading = true;
+      const formData = new FormData();
+      formData.append("action", "mc_report_post");
+      formData.append("post_id", postId);
+      formData.append("security", mediumCloneData.comment_nonce); // Using comment_nonce as a generic ajax nonce
+
+      try {
+        const res = await fetch(mediumCloneData.ajax_url, {
+          method: "POST",
+          body: formData,
+        });
+        const result = await res.json();
+        if (result.success) {
+          this.reported = true;
+          alert(result.data.message);
+          if (result.data.moderated) {
+             window.location.href = mediumCloneData.root_url;
+          }
+        } else {
+          alert(result.data.message || result.data);
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Une erreur est survenue.");
+      } finally {
+        this.loading = false;
+      }
+    },
+  }));
 });
 
 /* ═══════════════════════════════════════════════════════════════════════════
