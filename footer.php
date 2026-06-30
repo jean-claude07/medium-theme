@@ -5,7 +5,7 @@
         <div class="md:flex md:items-center md:justify-between">
             <div class="flex justify-center md:justify-start">
                 <span class="text-2xl font-bold font-serif tracking-tighter text-dark-bg dark:text-light-bg">
-                    Medium<span class="text-primary">Clone</span>
+                    Tana<span class="text-primary">Maro</span>
                 </span>
             </div>
             <div class="mt-8 flex justify-center gap-6 md:mt-0">
@@ -16,11 +16,11 @@
             </div>
         </div>
         <div class="mt-8 border-t border-light-border dark:border-dark-border pt-8 text-center text-sm text-gray-500">
-            &copy; <?php echo date('Y'); ?> Medium Clone Theme. Built with WordPress & Tailwind CSS.
+            &copy; <?php echo date('Y'); ?> TanaMaro Theme. Built with WordPress & Tailwind CSS.
         </div>
     </div>
 </footer>
-
+<script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs" type="module"></script>
 <?php wp_footer(); ?>
 </body>
 </html>

@@ -89,7 +89,7 @@ endif; ?>
                                 method: 'POST', headers: { 'Content-Type': 'application/json', 'X-WP-Nonce': mediumCloneData.nonce },
                                 body: JSON.stringify({ post_id: <?php the_ID(); ?> })
                             });
-                            this.$dispatch('bookmark-updated'); // Notifie la sidebar
+                            this.$dispatch('bookmark-updated');
                         }
                     }" @click.prevent="toggle()">
                     <svg class="w-5 h-5" :fill="active ? 'currentColor' : 'none'" stroke="currentColor"
@@ -111,8 +111,7 @@ endif; ?>
                     <div x-show="open" x-transition
                         class="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-surface border border-light-border dark:border-dark-border rounded-lg shadow-xl z-30 py-1 text-[13px] text-gray-700 dark:text-gray-300">
                         <button @click="hidden = true"
-                            class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800">Show less like
-                            this</button>
+                            class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800">Moins d'articles comme celui-ci</button>
                         <button @click="
                             if(confirm('Masquer tous les articles de cet auteur ?')) {
                                 fetch(mediumCloneData.root_url + '/wp-json/mediumclone/v1/mute-author', {
@@ -125,15 +124,15 @@ endif; ?>
                             }
                             open = false;"
                             class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 text-red-500">
-                            Mute author
+                            Masquer les articles de cet auteur
                         </button>
                         <hr class="my-1 border-light-border dark:border-dark-border">
                         <button @click="navigator.clipboard.writeText('<?php the_permalink(); ?>'); open = false;"
-                            class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800">Copy
-                            link</button>
+                            class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800">Copier le
+                            lien</button>
                         <button x-data="moderation(<?php the_ID(); ?>)" @click="report(); open = false;"
                             class="w-full text-left px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 text-red-500">
-                            Report post
+                            Signaler l'article
                         </button>
                     </div>
                 </div>

@@ -10,7 +10,7 @@
                 <div class="flex items-center gap-6">
                     <a href="<?php echo esc_url(home_url('/')); ?>" class="flex items-center">
                         <span class="text-2xl font-bold font-serif tracking-tighter text-dark-bg dark:text-light-bg">
-                            Medium<span class="text-primary">Clone</span>
+                            Tana<span class="text-primary">Maro</span>
                         </span>
                     </a>
                     <div class="hidden md:block">
@@ -18,7 +18,7 @@
                             <span class="absolute inset-y-0 left-0 flex items-center pl-3">
                                 <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                             </span>
-                            <input type="text" name="s" value="<?php echo get_search_query(); ?>" class="w-64 py-2 pl-10 pr-4 bg-light-surface dark:bg-dark-surface border-none rounded-full text-sm focus:ring-1 focus:ring-primary text-dark-bg dark:text-light-bg" placeholder="Search...">
+                            <input type="text" name="s" value="<?php echo get_search_query(); ?>" class="w-64 py-2 pl-10 pr-4 bg-light-surface dark:bg-dark-surface border-none rounded-full text-sm focus:ring-1 focus:ring-primary text-dark-bg dark:text-light-bg" placeholder="Recherche...">
                         </form>
                     </div>
                 </div>
@@ -37,17 +37,17 @@
                             </button>
                             <div x-show="open" @click.away="open = false" x-transition.opacity.duration.200ms class="absolute right-0 mt-2 w-48 bg-white dark:bg-dark-surface rounded-xl shadow-lg border border-light-border dark:border-dark-border py-1 z-50 capitalize">
                                 <a href="<?php echo esc_url(get_author_posts_url(get_current_user_id())); ?>" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-light-surface dark:hover:bg-dark-bg">Profile</a>
-                                <a href="<?php echo esc_url(mc_get_page_url('dashboard')); ?>" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-light-surface dark:hover:bg-dark-bg">Dashboard</a>
-                                <a href="<?php echo esc_url(mc_get_page_url('dashboard')); ?>" class="block px-4 py-2 text-sm text-primary hover:bg-light-surface dark:hover:bg-dark-bg font-medium">Write a story</a>
+                                <a href="<?php echo esc_url(mc_get_page_url('dashboard')); ?>" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-light-surface dark:hover:bg-dark-bg">Tableau de bord</a>
+                                <a href="<?php echo esc_url(mc_get_page_url('dashboard')); ?>" class="block px-4 py-2 text-sm text-primary hover:bg-light-surface dark:hover:bg-dark-bg font-medium">Écrire</a>
                                 <hr class="my-1 border-light-border dark:border-dark-border">
-                                <a href="<?php echo wp_logout_url(home_url()); ?>" class="block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-light-surface dark:hover:bg-dark-bg">Sign out</a>
+                                <a href="<?php echo wp_logout_url(home_url()); ?>" class="block px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-light-surface dark:hover:bg-dark-bg">Se déconnecter</a>
                             </div>
                         </div>
                     <?php
 else: ?>
                         <div class="hidden md:flex items-center gap-3">
-                            <a href="<?php echo esc_url(mc_get_page_url('login')); ?>" class="text-sm font-medium text-dark-bg dark:text-light-bg hover:text-primary transition-colors">Sign In</a>
-                            <a href="<?php echo esc_url(mc_get_page_url('login')); ?>" class="btn">Get Started</a>
+                            <a href="<?php echo esc_url(mc_get_page_url('login')); ?>" class="text-sm font-medium text-dark-bg dark:text-light-bg hover:text-primary transition-colors">Se connecter</a>
+                            <a href="<?php echo esc_url(mc_get_page_url('login')); ?>" class="btn">Commencer</a>
                         </div>
                     <?php
 endif; ?>

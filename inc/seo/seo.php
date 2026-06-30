@@ -240,3 +240,35 @@ function mc_add_structured_data()
         echo "\n</script>\n";
     }
 }
+
+/**
+ * Automatically set alt text for uploaded images for SEO.
+ */
+add_action('add_attachment', 'mc_auto_set_image_alt_seo');
+function mc_auto_set_image_alt_seo($post_ID) {
+    // Check if the uploaded attachment is an image
+    if (wp_attachment_is_image($post_ID)) {
+        $attachment = get_post($post_ID);
+        $alt_text = '';
+
+        // 1. If attached to a post, use the post title
+        if (!empty($attachment->post_parent)) {
+            $parent = get_post($attachment->post_parent);
+            if ($parent && !in_array($parent->post_type, ['revision', 'attachment'])) {
+                $alt_text = $parent->post_title;
+            }
+        }
+
+        // 2. If no parent or parent has no title, generate alt text from filename
+        if (empty($alt_text)) {
+            $title = $attachment->post_title;
+            // Clean up title: replace hyphens/underscores with spaces and capitalize words
+            $alt_text = ucwords(str_replace(['-', '_'], ' ', $title));
+        }
+
+        // Save the alt text in post meta
+        if (!empty($alt_text)) {
+            update_post_meta($post_ID, '_wp_attachment_image_alt', sanitize_text_field($alt_text));
+        }
+    }
+}

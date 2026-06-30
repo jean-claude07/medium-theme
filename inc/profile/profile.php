@@ -74,6 +74,10 @@ function mc_update_profile_handler($request)
                 }
 
                 update_user_meta($user_id, 'mc_custom_avatar', $attachment_id);
+                
+                // SEO: Set alt text for the uploaded avatar image
+                $user_info = get_userdata($user_id);
+                update_post_meta($attachment_id, '_wp_attachment_image_alt', sanitize_text_field($user_info->display_name));
             }
         }
     }
@@ -141,4 +145,29 @@ function mc_use_custom_avatar_url($url, $id_or_email, $args)
     }
 
     return $url;
+}
+
+/**
+ * Filtre pour injecter le nom complet de l'utilisateur comme texte alternatif (alt) de l'avatar pour le SEO.
+ */
+add_filter('get_avatar', 'mc_inject_avatar_alt_text', 10, 5);
+function mc_inject_avatar_alt_text($avatar, $id_or_email, $size, $default, $alt)
+{
+    $user = null;
+
+    if (is_numeric($id_or_email)) {
+        $user = get_user_by('id', $id_or_email);
+    } elseif (is_object($id_or_email) && !empty($id_or_email->user_id)) {
+        $user = get_user_by('id', $id_or_email->user_id);
+    } elseif (is_string($id_or_email)) {
+        $user = get_user_by('email', $id_or_email);
+    }
+
+    if ($user && !empty($user->display_name)) {
+        $alt_text = esc_attr($user->display_name);
+        // Remplacer l'attribut alt existant par le nom de l'utilisateur
+        $avatar = preg_replace('/alt=([\'"])(.*?)\1/', 'alt="' . $alt_text . '"', $avatar);
+    }
+
+    return $avatar;
 }

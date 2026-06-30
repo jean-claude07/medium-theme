@@ -27,23 +27,32 @@ if (isset($_GET['feed']) && $_GET['feed'] === 'following') {
             <div class="lg:w-1/2 relative z-10">
                 <h1
                     class="text-5xl md:text-7xl font-serif font-bold tracking-tight mb-6 text-dark-bg dark:text-light-bg">
-                    Stay curious.</h1>
+                    Restez curieux.</h1>
                 <p class="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-lg">
-                    Discover stories, thinking, and expertise from writers on any topic.
+                    Découvrez des articles, des réflexions et des expertises sur tous les sujets.
                 </p>
                 <?php
                 $start_url = is_user_logged_in() ? '#articles' : mc_get_page_url('login');
                 ?>
-                <a href="<?php echo esc_url($start_url); ?>" class="btn px-8 py-3 text-lg">Start Reading</a>
+                <a href="<?php echo esc_url($start_url); ?>" class="btn px-8 py-3 text-lg">Commencer la lecture</a>
             </div>
             <div class="hidden lg:block lg:w-1/3 relative">
-                <div
-                    class="aspect-square bg-gradient-to-tr from-primary/20 to-secondary/20 rounded-full blur-3xl opacity-50 absolute -right-10 -top-10 pointer-events-none">
-                </div>
-                <img src="https://images.unsplash.com/photo-1542435503-91dce532b225?auto=format&fit=crop&q=80&w=800"
-                    class="rounded-2xl shadow-2xl relative z-10 transform -rotate-3 hover:rotate-0 transition-transform duration-500 object-cover h-80 w-full"
-                    alt="Hero Image">
+            <!-- Fond dégradé (Blur) -->
+            <div class="aspect-square bg-gradient-to-tr from-primary/20 to-secondary/20 rounded-full blur-3xl opacity-50 absolute -right-10 -top-10 pointer-events-none">
             </div>
+            
+            <!-- Conteneur de l'animation -->
+            <div class="rounded-2xl shadow-2xl relative z-10 transform -rotate-0 hover:rotate-0 transition-transform duration-500 overflow-hidden bg-white">
+                <dotlottie-player 
+                    src="https://lottie.host/6f622280-b61d-4888-97cc-a189a5b145cf/YVRxsIDolr.lottie" 
+                    background="transparent" 
+                    speed="1" 
+                    style="width: 100%; height: 320px;" 
+                    loop 
+                    autoplay>
+                </dotlottie-player>
+            </div>
+</div>
         </div>
     </section>
 
@@ -101,13 +110,13 @@ if (isset($_GET['feed']) && $_GET['feed'] === 'following') {
                                     </path>
                                 </svg>
                             </div>
-                            <h3 class="text-lg font-bold mb-2">Your feed is empty</h3>
-                            <p class="text-gray-500 mb-6 text-sm">Follow some authors to see their latest stories here.</p>
-                            <a href="<?php echo home_url('/'); ?>" class="btn-outline px-4 py-2 text-sm">Discover authors</a>
+                            <h3 class="text-lg font-bold mb-2">Votre fil est vide</h3>
+                            <p class="text-gray-500 mb-6 text-sm">Suivez des auteurs pour voir leurs derniers articles ici.</p>
+                            <a href="<?php echo home_url('/'); ?>" class="btn-outline px-4 py-2 text-sm">Découvrir des auteurs</a>
                         </div>
                         <?php
                     else: ?>
-                        <p>No stories found.</p>
+                        <p>Aucun article trouvé.</p>
                         <?php
                     endif; ?>
                 </div>
@@ -118,7 +127,7 @@ if (isset($_GET['feed']) && $_GET['feed'] === 'following') {
         <div class="lg:col-span-4 space-y-10">
             <div class="animate-on-scroll">
                 <h3 class="font-bold mb-4 text-sm font-sans uppercase tracking-wider text-gray-900 dark:text-gray-100">
-                    Discover more of what matters to you</h3>
+                    Découvrir plus d'articles</h3>
                 <div class="flex flex-wrap gap-2">
                     <?php
                     $categories = get_categories(['number' => 10, 'hide_empty' => true]);
@@ -134,7 +143,7 @@ if (isset($_GET['feed']) && $_GET['feed'] === 'following') {
 
             <div class="animate-on-scroll">
                 <h3 class="font-bold mb-4 text-sm font-sans uppercase tracking-wider text-gray-900 dark:text-gray-100">
-                    Recommended authors</h3>
+                    Auteurs recommandés</h3>
                 <div class="space-y-4">
                     <?php
                     $current_user_id = get_current_user_id();

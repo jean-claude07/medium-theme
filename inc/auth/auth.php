@@ -81,14 +81,23 @@ function mc_process_registration_logic($email, $password, $name)
         return new WP_Error('email_exists', 'Cet e-mail est déjà utilisé', ['status' => 400]);
     }
 
-    // 4. Vérifier si le NOM (display_name) est unique
-    $user_query = get_users([
-        'search'         => $name,
-        'search_columns' => ['display_name', 'user_nicename'],
-        'number'         => 1
-    ]);
+    // 4. Préparer le nicename (slug auteur) et vérifier l'unicité
+    $nicename = strtolower(str_replace(' ', '_', $name));
+    $nicename = preg_replace('/[^a-z0-9_]/', '', $nicename);
 
-    if (!empty($user_query)) {
+    // Vérifier si le slug existe déjà
+    if (get_user_by('slug', $nicename)) {
+        return new WP_Error('name_exists', 'Ce nom (ou un nom trop similaire) est déjà utilisé pour un lien auteur.', ['status' => 400]);
+    }
+
+    // Vérifier si le display_name exact existe déjà
+    global $wpdb;
+    $existing_name = $wpdb->get_var($wpdb->prepare(
+        "SELECT ID FROM $wpdb->users WHERE display_name = %s LIMIT 1",
+        $name
+    ));
+
+    if ($existing_name) {
         return new WP_Error('name_exists', 'Ce nom est déjà pris, veuillez en choisir un autre.', ['status' => 400]);
     }
 
@@ -105,9 +114,10 @@ function mc_process_registration_logic($email, $password, $name)
 
     // Mise à jour des infos et du statut
     wp_update_user([
-        'ID'           => $user_id,
-        'display_name' => $name,
-        'first_name'   => $name
+        'ID'            => $user_id,
+        'display_name'  => $name,
+        'first_name'    => $name,
+        'user_nicename' => $nicename // Force l'utilisation du nom avec underscores pour le lien author
     ]);
 
     $activation_key = wp_generate_password(20, false);
@@ -121,7 +131,7 @@ function mc_process_registration_logic($email, $password, $name)
         'user'   => $user_id
     ], home_url('/login/'));
     
-    $subject = "Confirmez votre inscription sur MediumClone";
+    $subject = get_option('mc_email_activation_subject', 'Confirmez votre inscription sur MediumClone');
     
     mc_send_template_email($email, $subject, 'activation', [
         'name' => $name,
